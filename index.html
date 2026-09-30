@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Budget Planner - Minimalist Tracker</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts (Inter) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+            },
+            surface: {
+              900: '#121214',
+              800: '#1a1a1e',
+              700: '#26262b',
+              600: '#33333b',
+              500: '#454552'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #121214;
+      color: #e4e4e7;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #33333b;
+      border-radius: 3px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #22c55e;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+    }
+    input[type=range]::-moz-range-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #33333b;
+      border-radius: 3px;
+    }
+    input[type=range]::-moz-range-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #22c55e;
+      cursor: pointer;
+      border: none;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121214;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #26262b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #33333b;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-gray-200">
+
+  <!-- TOP HEADER -->
+  <header class="border-b border-surface-700 bg-surface-800/80 backdrop-blur sticky top-0 z-30 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">
+          ₱
+        </div>
+        <div>
+          <h1 class="text-base font-semibold text-white tracking-wide">Money Budget Planner</h1>
+          <p class="text-xs text-gray-400">Minimalist & Predictor with Calendar Tracking</p>
+        </div>
+      </div>
+
+      <!-- Time Horizon Toggle -->
+      <div class="flex items-center bg-surface-900 border border-surface-700 rounded-lg p-1">
+        <button id="btnDaily" onclick="setHorizon('daily')" class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-gray-400">Daily</button>
+        <button id="btnWeekly" onclick="setHorizon('weekly')" class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-gray-400">Weekly</button>
+        <button id="btnMonthly" onclick="setHorizon('monthly')" class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-white bg-surface-700 shadow-sm">Monthly</button>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2">
+        <button onclick="loadSamplePreset()" class="text-xs text-gray-400 hover:text-white bg-surface-700/50 hover:bg-surface-700 border border-surface-600 px-3 py-1.5 rounded-md transition">
+          <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Sample Preset
+        </button>
+        <button onclick="confirmReset()" class="text-xs text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 rounded-md transition">
+          <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Allowance, Expenses, Sliders (7 cols) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- INCOME / ALLOWANCE CARD -->
+      <div class="bg-surface-800 border border-surface-700 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-wallet text-emerald-400"></i>
+            Allowance / Income (<span class="horizonLabel">Monthly</span>)
+          </label>
+          <span class="text-xs text-gray-500">Base Cashflow</span>
+        </div>
+        <div class="relative">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-emerald-400 font-semibold">₱</span>
+          <input type="number" id="allowanceInput" oninput="updateAllowance(this.value)" placeholder="0" min="0" step="50"
+            class="w-full bg-surface-900 border border-surface-700 rounded-lg py-2.5 pl-8 pr-4 text-xl font-bold text-white focus:outline-none focus:border-emerald-500 transition" />
+        </div>
+      </div>
+
+      <!-- UNEXPECTED / AD-HOC EXPENSES SECTION -->
+      <div class="bg-surface-800 border border-surface-700 rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i class="fa-solid fa-bolt text-amber-400"></i>
+              Log Unexpected / Extra Expense
+            </h2>
+            <p class="text-xs text-gray-400">Track unplanned expenses instantly against your predicted savings.</p>
+          </div>
+          <span id="unexpectedBadgeCount" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">0 logged</span>
+        </div>
+
+        <form onsubmit="handleLogUnexpected(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+          <input type="date" id="unexpDate" required class="sm:col-span-3 bg-surface-900 border border-surface-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+          <input type="text" id="unexpTitle" placeholder="Reason (e.g. Meds, Repair)" required class="sm:col-span-4 bg-surface-900 border border-surface-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+          <div class="relative sm:col-span-3">
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-amber-400 font-semibold">₱</span>
+            <input type="number" id="unexpAmount" placeholder="Amount" min="1" step="1" required class="w-full bg-surface-900 border border-surface-700 rounded-lg pl-6 pr-2 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <button type="submit" class="sm:col-span-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 font-medium text-xs rounded-lg py-1.5 transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-plus text-xs"></i> Add
+          </button>
+        </form>
+
+        <!-- Unexpected Expenses List -->
+        <div id="unexpectedList" class="space-y-2 max-h-36 overflow-y-auto pr-1">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- EXPENSE CATEGORIES HEADER & ADD BTN -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-white">Scheduled Expenses</h2>
+          <p class="text-xs text-gray-400">Adjust monthly limits or customize day schedules.</p>
+        </div>
+        <button onclick="openCategoryModal()" class="bg-surface-700 hover:bg-surface-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg border border-surface-600 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-folder-plus text-emerald-400"></i> New Category
+        </button>
+      </div>
+
+      <!-- CATEGORIES LIST -->
+      <div id="categoriesContainer" class="space-y-4">
+        <!-- Rendered Dynamically -->
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Predictions & Calendar Tracker (5 cols) -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- PREDICTED SAVINGS HERO CARD -->
+      <div class="bg-surface-800 border border-surface-700 rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Predictor Summary</span>
+          <span id="savingsRateBadge" class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">0% Savings Rate</span>
+        </div>
+
+        <div class="space-y-1">
+          <p class="text-xs text-gray-400">Predicted Surplus (<span class="horizonLabel">Monthly</span>)</p>
+          <p id="savingsAmount" class="text-3xl font-extrabold text-emerald-400">₱0</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-3 border-t border-surface-700">
+          <div>
+            <p class="text-xs text-gray-400">Total Scheduled</p>
+            <p id="totalScheduledAmount" class="text-sm font-semibold text-white">₱0</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Logged Unexpected</p>
+            <p id="totalUnexpectedAmount" class="text-sm font-semibold text-amber-400">₱0</p>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs text-gray-400">
+            <span>Spending Target</span>
+            <span id="spendingPercentText">0% of Income</span>
+          </div>
+          <div class="w-full bg-surface-900 rounded-full h-2 overflow-hidden border border-surface-700">
+            <div id="spendingProgressBar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISUAL CALENDAR TRACKER -->
+      <div class="bg-surface-800 border border-surface-700 rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i class="fa-solid fa-calendar-days text-emerald-400"></i>
+              Expense Calendar
+            </h3>
+            <p id="calendarMonthLabel" class="text-xs text-gray-400">September 2026</p>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="changeMonth(-1)" class="w-7 h-7 flex items-center justify-center bg-surface-900 hover:bg-surface-700 rounded text-xs text-gray-300 transition">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onclick="changeMonth(1)" class="w-7 h-7 flex items-center justify-center bg-surface-900 hover:bg-surface-700 rounded text-xs text-gray-300 transition">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Days of Week Header -->
+        <div class="grid grid-cols-7 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-surface-700 pb-2">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-xs">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="flex items-center justify-around text-[10px] text-gray-400 pt-2 border-t border-surface-700/60">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500/40"></span> Scheduled</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Unexpected</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Exceeded</span>
+        </div>
+      </div>
+
+      <!-- CHART BREAKDOWN CARD -->
+      <div class="bg-surface-800 border border-surface-700 rounded-xl p-5 shadow-sm space-y-3">
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Breakdown Chart</h3>
+        <div class="relative h-48 flex items-center justify-center">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: ADD CATEGORY -->
+  <div id="categoryModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-surface-800 border border-surface-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-white">Add New Category</h3>
+        <button onclick="closeCategoryModal()" class="text-gray-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Category Title</label>
+          <input type="text" id="catTitleInput" placeholder="e.g. Transportation, Fitness" class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Accent Color</label>
+          <div class="flex gap-2" id="colorPickerOptions">
+            <!-- Dynamic color choices -->
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeCategoryModal()" class="px-3 py-1.5 bg-surface-700 text-xs text-gray-300 rounded-lg hover:bg-surface-600 transition">Cancel</button>
+        <button onclick="saveCategory()" class="px-4 py-1.5 bg-emerald-600 text-xs text-white font-medium rounded-lg hover:bg-emerald-500 transition">Create Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD EXPENSE ITEM WITH SCHEDULE -->
+  <div id="itemModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-surface-800 border border-surface-700 rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-white" id="itemModalTitle">Add Expense Item</h3>
+        <button onclick="closeItemModal()" class="text-gray-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <input type="hidden" id="itemCatId">
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Item Name</label>
+          <input type="text" id="itemNameInput" placeholder="e.g. Jeepney, Gas, Gym Membership" class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <!-- Mode selector: Fixed Monthly vs Day Schedule -->
+        <div class="flex rounded-lg bg-surface-900 p-1 border border-surface-700">
+          <button type="button" id="btnModeFixed" onclick="setItemMode('fixed')" class="flex-1 py-1.5 text-xs font-medium rounded text-white bg-surface-700">Fixed Amount</button>
+          <button type="button" id="btnModeSchedule" onclick="setItemMode('schedule')" class="flex-1 py-1.5 text-xs font-medium rounded text-gray-400">Day-by-Day Schedule</button>
+        </div>
+
+        <!-- FIXED AMOUNT CONTAINER -->
+        <div id="fixedAmountContainer" class="space-y-2">
+          <label class="text-xs text-gray-400 block">Base Monthly Amount (₱)</label>
+          <input type="number" id="itemFixedValue" placeholder="100" min="0" step="10" class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <!-- DAY SCHEDULE CONTAINER -->
+        <div id="dayScheduleContainer" class="space-y-3 hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-400">Specify Daily Cost (₱)</span>
+            <div class="flex gap-1">
+              <button type="button" onclick="quickFillDays(24)" class="text-[10px] bg-surface-700 hover:bg-surface-600 px-2 py-0.5 rounded text-gray-300">Weekdays ₱24</button>
+              <button type="button" onclick="quickFillDays(0)" class="text-[10px] bg-surface-700 hover:bg-surface-600 px-2 py-0.5 rounded text-gray-300">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-center">
+            <span class="text-[10px] text-gray-400">Sun</span>
+            <span class="text-[10px] text-gray-400">Mon</span>
+            <span class="text-[10px] text-gray-400">Tue</span>
+            <span class="text-[10px] text-gray-400">Wed</span>
+            <span class="text-[10px] text-gray-400">Thu</span>
+            <span class="text-[10px] text-gray-400">Fri</span>
+            <span class="text-[10px] text-gray-400">Sat</span>
+
+            <input type="number" id="day_0" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_1" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_2" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_3" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_4" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_5" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+            <input type="number" id="day_6" placeholder="0" class="day-input w-full bg-surface-900 border border-surface-700 rounded p-1 text-center text-xs text-white focus:border-emerald-500">
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-surface-700">
+        <button onclick="closeItemModal()" class="px-3 py-1.5 bg-surface-700 text-xs text-gray-300 rounded-lg hover:bg-surface-600 transition">Cancel</button>
+        <button onclick="saveItem()" class="px-4 py-1.5 bg-emerald-600 text-xs text-white font-medium rounded-lg hover:bg-emerald-500 transition">Save Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DAY BREAKDOWN DETAIL -->
+  <div id="dayDetailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-surface-800 border border-surface-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-surface-700 pb-3">
+        <div>
+          <h3 class="text-sm font-semibold text-white" id="modalDayTitle">Expenses for Date</h3>
+          <p class="text-xs text-gray-400" id="modalDaySubtitle">Daily Breakdown</p>
+        </div>
+        <button onclick="closeDayDetailModal()" class="text-gray-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Scheduled Items</h4>
+          <div id="modalScheduledList" class="space-y-1.5 max-h-32 overflow-y-auto pr-1"></div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Unexpected Items</h4>
+          <div id="modalUnexpectedList" class="space-y-1.5 max-h-32 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-surface-700 flex justify-between items-center">
+        <span class="text-xs text-gray-400">Total Spent This Day:</span>
+        <span id="modalDayTotal" class="text-sm font-bold text-emerald-400">₱0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    // COLOR PALETTE OPTIONS
+    const COLOR_OPTIONS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
+
+    // STATE MANAGEMENT
+    let appState = {
+      allowance: 15000, // Monthly base allowance in PHP
+      timeHorizon: 'monthly', // 'daily', 'weekly', 'monthly'
+      categories: [],
+      unexpectedExpenses: [], // [{ id, date: 'YYYY-MM-DD', title, amount }]
+      currentCalDate: new Date()
+    };
+
+    let chartInstance = null;
+    let selectedColor = COLOR_OPTIONS[0];
+    let currentItemMode = 'fixed';
+
+    // INITIALIZATION
+    window.addEventListener('DOMContentLoaded', () => {
+      loadFromLocalStorage();
+      renderColorPicker();
+      renderApp();
+    });
+
+    // LOCAL STORAGE MANAGEMENT
+    function saveToLocalStorage() {
+      localStorage.setItem('money_planner_state_v2', JSON.stringify({
+        allowance: appState.allowance,
+        timeHorizon: appState.timeHorizon,
+        categories: appState.categories,
+        unexpectedExpenses: appState.unexpectedExpenses
+      }));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('money_planner_state_v2');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          appState.allowance = parsed.allowance ?? 15000;
+          appState.timeHorizon = parsed.timeHorizon ?? 'monthly';
+          appState.categories = parsed.categories ?? [];
+          appState.unexpectedExpenses = parsed.unexpectedExpenses ?? [];
+        } catch (e) {
+          console.error("Error loading local storage", e);
+        }
+      } else {
+        // First time user: default sample or blank
+        loadSamplePreset(false);
+      }
+    }
+
+    // PRESET DATA FOR DEMO/TESTING
+    function loadSamplePreset(shouldSave = true) {
+      appState.allowance = 15000;
+      appState.categories = [
+        {
+          id: 'cat_transpo',
+          title: 'Transportation',
+          color: '#3b82f6',
+          items: [
+            {
+              id: 'item_jeep',
+              name: 'Jeepney / Daily Fare',
+              isSchedule: true,
+              value: 528, // Monthly approx
+              schedule: [0, 24, 24, 24, 24, 24, 0] // Mon-Fri ₱24
+            },
+            {
+              id: 'item_gas',
+              name: 'Gas / Maintenance',
+              isSchedule: false,
+              value: 1200,
+              schedule: [0,0,0,0,0,0,0]
+            }
+          ]
+        },
+        {
+          id: 'cat_fitness',
+          title: 'Fitness & Health',
+          color: '#22c55e',
+          items: [
+            {
+              id: 'item_gym',
+              name: 'Gym Membership',
+              isSchedule: false,
+              value: 800,
+              schedule: [0,0,0,0,0,0,0]
+            }
+          ]
+        }
+      ];
+
+      // Sample unexpected expense today
+      const todayStr = new Date().toISOString().split('T')[0];
+      appState.unexpectedExpenses = [
+        { id: 'unexp_1', date: todayStr, title: 'Medicine / Clinic', amount: 250 }
+      ];
+
+      if (shouldSave) saveToLocalStorage();
+      renderApp();
+    }
+
+    function confirmReset() {
+      if (confirm("Are you sure you want to clear all categories, expenses, and unexpected items?")) {
+        appState.allowance = 0;
+        appState.categories = [];
+        appState.unexpectedExpenses = [];
+        saveToLocalStorage();
+        renderApp();
+      }
+    }
+
+    // RENDER MAIN APP
+    function renderApp() {
+      // Inputs
+      document.getElementById('allowanceInput').value = appState.allowance || '';
+      
+      // Update Time Horizon UI Buttons
+      ['Daily', 'Weekly', 'Monthly'].forEach(h => {
+        const btn = document.getElementById(`btn${h}`);
+        if (appState.timeHorizon === h.toLowerCase()) {
+          btn.className = "px-3 py-1.5 text-xs font-medium rounded-md transition-all text-white bg-surface-700 shadow-sm";
+        } else {
+          btn.className = "px-3 py-1.5 text-xs font-medium rounded-md transition-all text-gray-400 hover:text-white";
+        }
+      });
+
+      document.querySelectorAll('.horizonLabel').forEach(el => {
+        el.textContent = appState.timeHorizon.charAt(0).toUpperCase() + appState.timeHorizon.slice(1);
+      });
+
+      renderCategories();
+      renderUnexpectedList();
+      calculateTotalsAndRenderSummary();
+      renderCalendar();
+    }
+
+    // TIME HORIZON CONVERSIONS
+    function setHorizon(horizon) {
+      appState.timeHorizon = horizon;
+      saveToLocalStorage();
+      renderApp();
+    }
+
+    function getMultiplier() {
+      // Conversions based on monthly baseline
+      if (appState.timeHorizon === 'daily') return 1 / 30;
+      if (appState.timeHorizon === 'weekly') return 7 / 30;
+      return 1; // Monthly
+    }
+
+    // CALCULATE MONTHLY VALUE OF AN ITEM
+    function getItemMonthlyValue(item) {
+      if (item.isSchedule && item.schedule) {
+        // Sum weekly schedule * 4.4 weeks/month
+        const weeklySum = item.schedule.reduce((a, b) => a + Number(b || 0), 0);
+        return weeklySum * 4.4;
+      }
+      return Number(item.value || 0);
+    }
+
+    // RENDER CATEGORIES AND ITEMS
+    function renderCategories() {
+      const container = document.getElementById('categoriesContainer');
+      container.innerHTML = '';
+
+      if (appState.categories.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 bg-surface-800/50 border border-dashed border-surface-700 rounded-xl">
+            <i class="fa-solid fa-folder-open text-2xl text-gray-600 mb-2"></i>
+            <p class="text-xs text-gray-400">No expense categories yet.</p>
+            <button onclick="openCategoryModal()" class="mt-3 text-xs text-emerald-400 hover:underline font-medium">+ Add First Category</button>
+          </div>
+        `;
+        return;
+      }
+
+      const mult = getMultiplier();
+
+      appState.categories.forEach(cat => {
+        const catCard = document.createElement('div');
+        catCard.className = "bg-surface-800 border border-surface-700 rounded-xl p-4 space-y-3 shadow-sm";
+
+        let itemsHTML = '';
+        if (cat.items.length === 0) {
+          itemsHTML = `<p class="text-xs text-gray-500 italic py-1">No items in this category.</p>`;
+        } else {
+          cat.items.forEach(item => {
+            const monthlyVal = getItemMonthlyValue(item);
+            const currentVal = Math.round(monthlyVal * mult);
+            const maxVal = Math.max(Math.round(currentVal * 2.5), 1000);
+
+            itemsHTML += `
+              <div class="bg-surface-900 border border-surface-700/60 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-white">${escapeHtml(item.name)}</span>
+                    ${item.isSchedule ? `<span class="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded">Schedule</span>` : ''}
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-emerald-400">₱${currentVal.toLocaleString()}</span>
+                    <button onclick="editItem('${cat.id}', '${item.id}')" class="text-gray-500 hover:text-gray-300 text-xs px-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button onclick="deleteItem('${cat.id}', '${item.id}')" class="text-gray-500 hover:text-rose-400 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </div>
+
+                ${!item.isSchedule ? `
+                  <div class="flex items-center gap-3">
+                    <input type="range" min="0" max="${maxVal}" step="10" value="${currentVal}" 
+                      oninput="adjustItemValue('${cat.id}', '${item.id}', this.value)" class="w-full">
+                  </div>
+                ` : `
+                  <div class="text-[10px] text-gray-400 flex justify-between">
+                    <span>S:₱${item.schedule[0]} M:₱${item.schedule[1]} T:₱${item.schedule[2]} W:₱${item.schedule[3]} T:₱${item.schedule[4]} F:₱${item.schedule[5]} S:₱${item.schedule[6]}</span>
+                    <span class="text-gray-500">Fixed by Schedule</span>
+                  </div>
+                `}
+              </div>
+            `;
+          });
+        }
+
+        catCard.innerHTML = `
+          <div class="flex items-center justify-between border-b border-surface-700/80 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" style="background-color: ${cat.color}"></span>
+              <h3 class="text-sm font-semibold text-white">${escapeHtml(cat.title)}</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openItemModal('${cat.id}')" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-plus text-[10px]"></i> Item
+              </button>
+              <button onclick="deleteCategory('${cat.id}')" class="text-gray-500 hover:text-rose-400 text-xs pl-2 border-l border-surface-700">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="space-y-2">
+            ${itemsHTML}
+          </div>
+        `;
+
+        container.appendChild(catCard);
+      });
+    }
+
+    // UNEXPECTED EXPENSES
+    function handleLogUnexpected(e) {
+      e.preventDefault();
+      const date = document.getElementById('unexpDate').value;
+      const title = document.getElementById('unexpTitle').value.trim();
+      const amount = Number(document.getElementById('unexpAmount').value);
+
+      if (!date || !title || isNaN(amount) || amount <= 0) return;
+
+      appState.unexpectedExpenses.push({
+        id: 'unexp_' + Date.now(),
+        date,
+        title,
+        amount
+      });
+
+      document.getElementById('unexpTitle').value = '';
+      document.getElementById('unexpAmount').value = '';
+
+      saveToLocalStorage();
+      renderApp();
+    }
+
+    function deleteUnexpected(id) {
+      appState.unexpectedExpenses = appState.unexpectedExpenses.filter(u => u.id !== id);
+      saveToLocalStorage();
+      renderApp();
+    }
+
+    function renderUnexpectedList() {
+      const container = document.getElementById('unexpectedList');
+      const badge = document.getElementById('unexpectedBadgeCount');
+      badge.textContent = `${appState.unexpectedExpenses.length} logged`;
+
+      if (appState.unexpectedExpenses.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500 italic py-1">No unexpected expenses logged.</p>`;
+        return;
+      }
+
+      container.innerHTML = appState.unexpectedExpenses.map(u => `
+        <div class="flex items-center justify-between bg-surface-900 border border-amber-500/20 px-3 py-1.5 rounded-lg text-xs">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-amber-400 font-mono">${u.date}</span>
+            <span class="text-white font-medium">${escapeHtml(u.title)}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-amber-400">₱${Number(u.amount).toLocaleString()}</span>
+            <button onclick="deleteUnexpected('${u.id}')" class="text-gray-500 hover:text-rose-400"><i class="fa-solid fa-xmark text-xs"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // CALCULATIONS & SUMMARY
+    function calculateTotalsAndRenderSummary() {
+      const mult = getMultiplier();
+      const displayedAllowance = Math.round((appState.allowance || 0) * mult);
+
+      // Scheduled Totals
+      let monthlyScheduled = 0;
+      const categoryTotals = [];
+
+      appState.categories.forEach(cat => {
+        let catMonthlySum = 0;
+        cat.items.forEach(item => {
+          catMonthlySum += getItemMonthlyValue(item);
+        });
+        monthlyScheduled += catMonthlySum;
+        categoryTotals.push({
+          title: cat.title,
+          color: cat.color,
+          value: Math.round(catMonthlySum * mult)
+        });
+      });
+
+      const totalScheduled = Math.round(monthlyScheduled * mult);
+
+      // Unexpected Expenses Sum for current month view
+      let totalUnexpected = 0;
+      appState.unexpectedExpenses.forEach(u => {
+        totalUnexpected += Number(u.amount || 0);
+      });
+      const currentHorizonUnexpected = Math.round(totalUnexpected * mult);
+
+      const totalSpent = totalScheduled + currentHorizonUnexpected;
+      const surplus = displayedAllowance - totalSpent;
+
+      // Update Hero Elements
+      const savingsEl = document.getElementById('savingsAmount');
+      savingsEl.textContent = `₱${surplus.toLocaleString()}`;
+      if (surplus < 0) {
+        savingsEl.className = "text-3xl font-extrabold text-rose-500";
+      } else {
+        savingsEl.className = "text-3xl font-extrabold text-emerald-400";
+      }
+
+      document.getElementById('totalScheduledAmount').textContent = `₱${totalScheduled.toLocaleString()}`;
+      document.getElementById('totalUnexpectedAmount').textContent = `₱${currentHorizonUnexpected.toLocaleString()}`;
+
+      // Savings Rate
+      let savingsRate = 0;
+      if (displayedAllowance > 0) {
+        savingsRate = Math.round((surplus / displayedAllowance) * 100);
+      }
+      document.getElementById('savingsRateBadge').textContent = `${savingsRate}% Savings Rate`;
+
+      // Spending Progress
+      let spendPct = 0;
+      if (displayedAllowance > 0) {
+        spendPct = Math.min(Math.round((totalSpent / displayedAllowance) * 100), 100);
+      }
+      document.getElementById('spendingPercentText').textContent = `${spendPct}% of Income Spent`;
+      
+      const progressBar = document.getElementById('spendingProgressBar');
+      progressBar.style.width = `${spendPct}%`;
+      if (spendPct > 90) {
+        progressBar.className = "bg-rose-500 h-full transition-all duration-300";
+      } else if (spendPct > 70) {
+        progressBar.className = "bg-amber-500 h-full transition-all duration-300";
+      } else {
+        progressBar.className = "bg-emerald-500 h-full transition-all duration-300";
+      }
+
+      renderChart(categoryTotals);
+    }
+
+    // CHART RENDER
+    function renderChart(data) {
+      const ctx = document.getElementById('categoryChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      if (data.length === 0 || data.every(d => d.value === 0)) {
+        ctx.clearRect(0, 0, 200, 200);
+        return;
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.map(d => d.title),
+          datasets: [{
+            data: data.map(d => d.value),
+            backgroundColor: data.map(d => d.color),
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#a1a1aa',
+                font: { size: 10, family: 'Inter' },
+                boxWidth: 10
+              }
+            }
+          },
+          cutout: '70%'
+        }
+      });
+    }
+
+    // CALENDAR LOGIC
+    function changeMonth(delta) {
+      appState.currentCalDate.setMonth(appState.currentCalDate.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+
+      const year = appState.currentCalDate.getFullYear();
+      const month = appState.currentCalDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendarMonthLabel').textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      // Blank slots
+      for (let i = 0; i < firstDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = "h-10 border border-transparent";
+        grid.appendChild(cell);
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Daily allowance target baseline
+      const dailyAllowanceBaseline = (appState.allowance || 0) / 30;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cellDate = new Date(year, month, day);
+        const dayOfWeek = cellDate.getDay();
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        // Calculate scheduled daily cost
+        let scheduledDailyCost = 0;
+        appState.categories.forEach(cat => {
+          cat.items.forEach(item => {
+            if (item.isSchedule && item.schedule) {
+              scheduledDailyCost += Number(item.schedule[dayOfWeek] || 0);
+            } else {
+              scheduledDailyCost += (Number(item.value || 0) / 30);
+            }
+          });
+        });
+
+        // Calculate unexpected cost for this day
+        let unexpectedDailyCost = 0;
+        appState.unexpectedExpenses.forEach(u => {
+          if (u.date === dateStr) {
+            unexpectedDailyCost += Number(u.amount || 0);
+          }
+        });
+
+        const totalDayCost = Math.round(scheduledDailyCost + unexpectedDailyCost);
+        const isToday = dateStr === todayStr;
+
+        const cell = document.createElement('button');
+        cell.onclick = () => openDayDetailModal(dateStr, dayOfWeek);
+        
+        let borderStyle = isToday ? "border-emerald-500 border-2" : "border-surface-700/50";
+        let bgStyle = "bg-surface-900/60 hover:bg-surface-700/60";
+
+        if (totalDayCost > dailyAllowanceBaseline && dailyAllowanceBaseline > 0) {
+          bgStyle = "bg-rose-500/10 hover:bg-rose-500/20";
+        }
+
+        cell.className = `h-11 border ${borderStyle} ${bgStyle} rounded p-1 flex flex-col justify-between items-center transition text-left`;
+
+        let badgeDot = '';
+        if (unexpectedDailyCost > 0) {
+          badgeDot = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>`;
+        } else if (scheduledDailyCost > 0) {
+          badgeDot = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>`;
+        }
+
+        cell.innerHTML = `
+          <div class="w-full flex justify-between items-center text-[10px]">
+            <span class="font-medium ${isToday ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${day}</span>
+            ${badgeDot}
+          </div>
+          <span class="text-[9px] font-semibold text-gray-300">₱${totalDayCost}</span>
+        `;
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // DAY DETAIL MODAL
+    function openDayDetailModal(dateStr, dayOfWeek) {
+      document.getElementById('modalDayTitle').textContent = `Breakdown for ${dateStr}`;
+      
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      document.getElementById('modalDaySubtitle').textContent = `${dayNames[dayOfWeek]} Daily Cost`;
+
+      const scheduledList = document.getElementById('modalScheduledList');
+      const unexpectedList = document.getElementById('modalUnexpectedList');
+
+      let scheduledTotal = 0;
+      let scheduledHTML = '';
+
+      appState.categories.forEach(cat => {
+        cat.items.forEach(item => {
+          let cost = 0;
+          if (item.isSchedule && item.schedule) {
+            cost = Number(item.schedule[dayOfWeek] || 0);
+          } else {
+            cost = Math.round(Number(item.value || 0) / 30);
+          }
+          if (cost > 0) {
+            scheduledTotal += cost;
+            scheduledHTML += `
+              <div class="flex justify-between text-xs bg-surface-900 px-2 py-1 rounded">
+                <span class="text-gray-300">${escapeHtml(item.name)}</span>
+                <span class="font-medium text-emerald-400">₱${cost}</span>
+              </div>
+            `;
+          }
+        });
+      });
+
+      scheduledList.innerHTML = scheduledHTML || `<p class="text-xs text-gray-500 italic">No scheduled items.</p>`;
+
+      let unexpectedTotal = 0;
+      let unexpectedHTML = '';
+
+      appState.unexpectedExpenses.forEach(u => {
+        if (u.date === dateStr) {
+          unexpectedTotal += Number(u.amount);
+          unexpectedHTML += `
+            <div class="flex justify-between text-xs bg-surface-900 px-2 py-1 rounded">
+              <span class="text-gray-300">${escapeHtml(u.title)}</span>
+              <span class="font-medium text-amber-400">₱${u.amount}</span>
+            </div>
+          `;
+        }
+      });
+
+      unexpectedList.innerHTML = unexpectedHTML || `<p class="text-xs text-gray-500 italic">No unexpected expenses logged.</p>`;
+
+      document.getElementById('modalDayTotal').textContent = `₱${(scheduledTotal + unexpectedTotal).toLocaleString()}`;
+      document.getElementById('dayDetailModal').classList.remove('hidden');
+    }
+
+    function closeDayDetailModal() {
+      document.getElementById('dayDetailModal').classList.add('hidden');
+    }
+
+    // USER ACTIONS & MODAL CONTROLS
+    function updateAllowance(val) {
+      appState.allowance = Number(val) || 0;
+      saveToLocalStorage();
+      calculateTotalsAndRenderSummary();
+      renderCalendar();
+    }
+
+    function adjustItemValue(catId, itemId, newVal) {
+      const mult = getMultiplier();
+      const cat = appState.categories.find(c => c.id === catId);
+      if (cat) {
+        const item = cat.items.find(i => i.id === itemId);
+        if (item) {
+          item.value = Math.round(Number(newVal) / mult);
+          saveToLocalStorage();
+          calculateTotalsAndRenderSummary();
+          renderCalendar();
+        }
+      }
+    }
+
+    // CATEGORY MODAL
+    function renderColorPicker() {
+      const container = document.getElementById('colorPickerOptions');
+      container.innerHTML = COLOR_OPTIONS.map((c, i) => `
+        <button type="button" onclick="selectColor('${c}')" class="w-6 h-6 rounded-full border-2 transition ${i === 0 ? 'border-white scale-110' : 'border-transparent'}" style="background-color: ${c}"></button>
+      `).join('');
+      selectedColor = COLOR_OPTIONS[0];
+    }
+
+    function selectColor(color) {
+      selectedColor = color;
+      const btns = document.querySelectorAll('#colorPickerOptions button');
+      btns.forEach(btn => {
+        if (btn.style.backgroundColor === color || btn.style.backgroundColor === rgbToHex(color)) {
+          btn.className = "w-6 h-6 rounded-full border-2 border-white scale-110 transition";
+        } else {
+          btn.className = "w-6 h-6 rounded-full border-2 border-transparent transition";
+        }
+      });
+    }
+
+    function openCategoryModal() {
+      document.getElementById('catTitleInput').value = '';
+      document.getElementById('categoryModal').classList.remove('hidden');
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('categoryModal').classList.add('hidden');
+    }
+
+    function saveCategory() {
+      const title = document.getElementById('catTitleInput').value.trim();
+      if (!title) return;
+
+      appState.categories.push({
+        id: 'cat_' + Date.now(),
+        title,
+        color: selectedColor,
+        items: []
+      });
+
+      saveToLocalStorage();
+      closeCategoryModal();
+      renderApp();
+    }
+
+    function deleteCategory(catId) {
+      if (confirm("Delete this category and all its items?")) {
+        appState.categories = appState.categories.filter(c => c.id !== catId);
+        saveToLocalStorage();
+        renderApp();
+      }
+    }
+
+    // ITEM MODAL & SCHEDULE
+    let editingItemId = null;
+
+    function setItemMode(mode) {
+      currentItemMode = mode;
+      const btnFixed = document.getElementById('btnModeFixed');
+      const btnSched = document.getElementById('btnModeSchedule');
+      const containerFixed = document.getElementById('fixedAmountContainer');
+      const containerSched = document.getElementById('dayScheduleContainer');
+
+      if (mode === 'fixed') {
+        btnFixed.className = "flex-1 py-1.5 text-xs font-medium rounded text-white bg-surface-700";
+        btnSched.className = "flex-1 py-1.5 text-xs font-medium rounded text-gray-400";
+        containerFixed.classList.remove('hidden');
+        containerSched.classList.add('hidden');
+      } else {
+        btnSched.className = "flex-1 py-1.5 text-xs font-medium rounded text-white bg-surface-700";
+        btnFixed.className = "flex-1 py-1.5 text-xs font-medium rounded text-gray-400";
+        containerSched.classList.remove('hidden');
+        containerFixed.classList.add('hidden');
+      }
+    }
+
+    function openItemModal(catId) {
+      editingItemId = null;
+      document.getElementById('itemModalTitle').textContent = "Add Expense Item";
+      document.getElementById('itemCatId').value = catId;
+      document.getElementById('itemNameInput').value = '';
+      document.getElementById('itemFixedValue').value = '';
+      quickFillDays(0);
+      setItemMode('fixed');
+      document.getElementById('itemModal').classList.remove('hidden');
+    }
+
+    function editItem(catId, itemId) {
+      const cat = appState.categories.find(c => c.id === catId);
+      if (!cat) return;
+      const item = cat.items.find(i => i.id === itemId);
+      if (!item) return;
+
+      editingItemId = itemId;
+      document.getElementById('itemModalTitle').textContent = "Edit Expense Item";
+      document.getElementById('itemCatId').value = catId;
+      document.getElementById('itemNameInput').value = item.name;
+
+      if (item.isSchedule && item.schedule) {
+        setItemMode('schedule');
+        for (let i = 0; i < 7; i++) {
+          document.getElementById(`day_${i}`).value = item.schedule[i] || '';
+        }
+      } else {
+        setItemMode('fixed');
+        document.getElementById('itemFixedValue').value = item.value || '';
+      }
+
+      document.getElementById('itemModal').classList.remove('hidden');
+    }
+
+    function closeItemModal() {
+      document.getElementById('itemModal').classList.add('hidden');
+    }
+
+    function quickFillDays(val) {
+      for (let i = 0; i < 7; i++) {
+        // Weekdays if 24
+        if (val > 0 && (i === 0 || i === 6)) {
+          document.getElementById(`day_${i}`).value = 0;
+        } else {
+          document.getElementById(`day_${i}`).value = val;
+        }
+      }
+    }
+
+    function saveItem() {
+      const catId = document.getElementById('itemCatId').value;
+      const name = document.getElementById('itemNameInput').value.trim();
+      if (!name) return;
+
+      const cat = appState.categories.find(c => c.id === catId);
+      if (!cat) return;
+
+      let newItem = {
+        id: editingItemId || ('item_' + Date.now()),
+        name,
+        isSchedule: currentItemMode === 'schedule',
+        value: 0,
+        schedule: [0,0,0,0,0,0,0]
+      };
+
+      if (currentItemMode === 'fixed') {
+        newItem.value = Number(document.getElementById('itemFixedValue').value) || 0;
+      } else {
+        const sched = [];
+        for (let i = 0; i < 7; i++) {
+          sched.push(Number(document.getElementById(`day_${i}`).value) || 0);
+        }
+        newItem.schedule = sched;
+        newItem.value = Math.round(sched.reduce((a,b)=>a+b, 0) * 4.4);
+      }
+
+      if (editingItemId) {
+        const idx = cat.items.findIndex(i => i.id === editingItemId);
+        if (idx !== -1) cat.items[idx] = newItem;
+      } else {
+        cat.items.push(newItem);
+      }
+
+      saveToLocalStorage();
+      closeItemModal();
+      renderApp();
+    }
+
+    function deleteItem(catId, itemId) {
+      const cat = appState.categories.find(c => c.id === catId);
+      if (cat) {
+        cat.items = cat.items.filter(i => i.id !== itemId);
+        saveToLocalStorage();
+        renderApp();
+      }
+    }
+
+    // UTILS
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function rgbToHex(rgb) {
+      if (rgb.startsWith('#')) return rgb;
+      const parts = rgb.match(/\d+/g);
+      if (!parts) return rgb;
+      return "#" + parts.slice(0,3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+    }
+  </script>
+</body>
+</html>
